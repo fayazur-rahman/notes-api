@@ -177,3 +177,13 @@ git push -u origin main
 ```
 
 These commands only initialize and push the source repository; they do not deploy the application.
+
+
+## Run locally with Docker Compose
+
+
+1. Copy `.env.example` to `.env` and set `DB_HOST=db` (the Compose service name) and a `DB_PASSWORD`.
+2. `docker compose up` — starts Postgres, waits for it to be healthy, then starts the API.
+3. `curl -i localhost:3000/health` → `200 {"status":"ok"}`.
+4. `docker compose down` to stop (add `-v` to also wipe the database volume).
+
