@@ -187,3 +187,15 @@ These commands only initialize and push the source repository; they do not deplo
 3. `curl -i localhost:3000/health` → `200 {"status":"ok"}`.
 4. `docker compose down` to stop (add `-v` to also wipe the database volume).
 
+
+## Build & run the image
+
+
+```bash
+docker build -t notes-api:0.1.0 .
+docker compose up -d db                      # start Postgres
+docker run --rm --network notes-api_default --env-file .env -p 3000:3000 notes-api:0.1.0
+curl -i localhost:3000/health                # 200
+```
+The image ships no config — every value comes from env vars at run time.
+
