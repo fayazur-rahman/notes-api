@@ -75,3 +75,34 @@ docker run -d --name notes-api --network notesnet --env-file .env -p 80:3000 \
 - Instance role missing/not attached, or lacks AmazonEC2ContainerRegistryReadOnly.
 - Re-run get-login-password (12h token). Confirm role: `aws sts get-caller-identity`
   should show assumed-role/notes-api-ec2-role, not user/kayes-admin.
+
+## Nginx reverse proxy (W5 D3)
+
+
+### Topology
+Internet → SG:80 → Nginx (host) → 127.0.0.1:3000 → app container.
+App publishes to loopback only (`-p 127.0.0.1:3000:3000`) — not internet-reachable directly.
+
+
+### Config: /etc/nginx/sites-available/notes-api
+- `upstream notes_api { server 127.0.0.1:3000; }` + `proxy_pass http://notes_api;`
+- proxy_set_header: Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto (last one needed for TLS in W7).
+- Enable: symlink into sites-enabled; `rm` the default site (duplicate default_server otherwise).
+- `sudo nginx -t` → `sudo systemctl reload nginx` → `sudo systemctl enable nginx`.
+
+
+### 502 Bad Gateway
+- Meaning: Nginx is UP but the backend didn't answer. NOT an Nginx problem.
+- Check the CONTAINER: `docker ps` (is notes-api running?), `docker logs notes-api`.
+- Nginx side confirms it: /var/log/nginx/error.log shows "connect() failed ... upstream 127.0.0.1:3000".
+- Fix: start/fix the app container; 502 clears.
+
+
+### Timeout / connection refused (NOT 502)
+- That's Nginx itself down or SG blocking 80 → `systemctl status nginx`, check the security group.
+
+
+### Nginx won't start after install
+- Port 80 already held (app still published on :80). Free it first: re-run app on 127.0.0.1:3000.
+  Diagnose with `ss -tulpn | grep :80`.
+
