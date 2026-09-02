@@ -34,3 +34,44 @@
 - SG: 22 ← my IP only; 80/443 ← all. ufw: 22/80/443 allowed, enabled.
 - SSH: `PasswordAuthentication no`, `PermitRootLogin no` via `sshd_config.d/99-hardening.conf`.
 - `unattended-upgrades` enabled.
+
+## App on EC2 — run procedure & fixes
+
+
+### Run the stack on the box
+```bash
+export REGION=us-east-1; 
+export ACCOUNT_ID=034866042287
+export REGISTRY=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+
+aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
+
+docker pull $REGISTRY/notes-api:0.1.0
+
+docker network create notesnet   # once
+
+#Create postgres container
+docker run -d --name notes-db --network notesnet -v pgdata:/var/lib/postgresql/data \
+  -e POSTGRES_USER=notes_app -e POSTGRES_PASSWORD=*** -e POSTGRES_DB=notes_db \
+  --restart unless-stopped postgres:16
+
+#Create notes-api container
+docker run -d --name notes-api --network notesnet --env-file .env -p 80:3000 \
+  --restart unless-stopped $REGISTRY/notes-api:0.1.0
+```
+
+
+### /health returns 500 (not 200)
+- App is up but can't reach the DB. Check `docker logs notes-api` for ECONNREFUSED.
+- Both containers on `notesnet`? (`docker network inspect notesnet`). DB_HOST must be the
+  DB container name (`notes-db`), and app DB_* must match Postgres POSTGRES_*.
+
+
+### curl from laptop times out but works on the box
+- Security group isn't allowing 80 (should be 0.0.0.0/0), or you're curling https not http.
+
+
+### ECR pull fails with "denied" on the instance
+- Instance role missing/not attached, or lacks AmazonEC2ContainerRegistryReadOnly.
+- Re-run get-login-password (12h token). Confirm role: `aws sts get-caller-identity`
+  should show assumed-role/notes-api-ec2-role, not user/kayes-admin.
