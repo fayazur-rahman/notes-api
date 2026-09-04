@@ -106,3 +106,36 @@ App publishes to loopback only (`-p 127.0.0.1:3000:3000`) — not internet-reach
 - Port 80 already held (app still published on :80). Free it first: re-run app on 127.0.0.1:3000.
   Diagnose with `ss -tulpn | grep :80`.
 
+## RDS (managed Postgres) — W5 D4
+
+
+### Switch the app to RDS (env-only, no rebuild)
+- `.env`: DB_HOST = RDS endpoint, DB_PASSWORD = RDS master password. DB_USER/DB_NAME unchanged.
+- Recreate app container (no --network needed; reaches RDS over the VPC by endpoint).
+- The app's startup `initialize()` (CREATE TABLE IF NOT EXISTS) IS the migration.
+
+
+### App times out connecting to RDS
+- Timeout (not "refused") = firewall/SG silently dropping packets, not a DB problem.
+- Fix: RDS security group (`notes-rds-sg`) inbound → PostgreSQL 5432 → Source = the EC2
+  instance's security group (SG-to-SG, NOT an IP). RDS must be Public access: No.
+
+
+### App log: "no pg_hba.conf entry ... no encryption" / "SSL required"  (NOT a timeout)
+- RDS is enforcing TLS (rds.force_ssl=1 on the parameter group).
+- Fix: RDS → Parameter groups → create one for your PG family → set `rds.force_ssl = 0`
+  → attach to the instance (Modify) → reboot RDS.
+- Tell-tale: `psql` connects fine (libpq negotiates SSL) but the app doesn't → it's force_ssl.
+
+
+### Connect to RDS directly (from the EC2 box only — RDS isn't public)
+```bash
+psql -h <rds-endpoint> -U notes_app -d notes_db
+\dt ; SELECT * FROM notes; \q
+```
+
+
+### Why psql works on the box but not the laptop
+- RDS has only a private IP inside the VPC (Public access: No). The EC2 box is in the same
+  VPC and can route to it; the laptop is outside the VPC with no route. Not a permission issue.
+
