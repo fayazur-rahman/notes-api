@@ -15,7 +15,6 @@ jobs:
       - name: Secret is masked in logs
         run: echo "The secret is ${GREETING}"
         
-    steps:
       - name: Inspect the runner BEFORE checkout
         run: |
           echo "who/where am I:"
