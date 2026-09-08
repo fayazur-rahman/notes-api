@@ -15,6 +15,10 @@ jobs:
     steps:
       - name: Secret is masked in logs
         run: echo "The secret is ${GREETING}"
+
+      - name: Fail on purpose 
+        echo "about to fail the job" 
+        run: exit 1
         
       - name: Inspect the runner BEFORE checkout
         run: |
