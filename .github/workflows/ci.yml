@@ -10,5 +10,20 @@ jobs:
   hello:
     runs-on: ubuntu-latest
     steps:
-      - name: Say hello
-        run: echo "Pipeline is alive on commit ${GITHUB_SHA}"
+      - name: Inspect the runner BEFORE checkout
+        run: |
+          echo "who/where am I:"
+          uname -a
+          pwd
+          ls -la          # nearly empty — your code is NOT here yet
+
+
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+
+      - name: Inspect AFTER checkout
+        run: |
+          echo "now the repo is here:"
+          ls -la          # your files appeared
+
