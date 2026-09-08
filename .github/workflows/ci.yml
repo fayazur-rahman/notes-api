@@ -13,7 +13,7 @@ jobs:
       GREETING: ${ { secrets.PIPELINE_GREETING } }
     steps:
       - name: Secret is masked in logs
-        run: echo "The secret is: ${GREETING}"
+        run: echo "The secret is ${GREETING}"
         
     steps:
       - name: Inspect the runner BEFORE checkout
