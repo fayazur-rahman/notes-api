@@ -31,7 +31,7 @@ jobs:
         if: github.event_name == 'push'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::034866042287:oidc-provider/token.actions.githubusercontent.com
+          role-to-assume: arn:aws:iam::034866042287:role/notes-api-gha-role
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
