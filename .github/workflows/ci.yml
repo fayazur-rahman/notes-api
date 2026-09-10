@@ -6,22 +6,44 @@ on:
   pull_request: 
     branches: [ main ]
 
+permissions:
+  contents: read
+  id-token: write 
+
 jobs: 
-  hello:
+  build-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with: 
-          node-verstion: '20'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Install dependencies (reproducible)
+      - name: Install dependencies
         run: npm ci
 
       - name: Run tests
-        run: npm test  
+        run: npm test
 
+      - name: Configure AWS Credentials (OIDC)
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push'
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Build and push image
+        if: github.event_name == 'push'
+        env: 
+          REGISTRY: 034866042287.dkr.ecr.us-east-1.amazonaws.com
+          SHA: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/notes-api:$SHA -t $REGISTRY/notes-api:latest .
+          docker push $REGISTRY/notes-api:$SHA
+          docker push $REGISTRY/notes-api:latest
