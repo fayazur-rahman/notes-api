@@ -9,31 +9,19 @@ on:
 jobs: 
   hello:
     runs-on: ubuntu-latest
-    env:
-      GREETING: ${{ secrets.PIPELINE_GREETING }}
 
     steps:
-      - name: Secret is masked in logs
-        run: echo "The secret is ${GREETING}"
-
-      - name: Fail on purpose 
-        echo "about to fail the job" 
-        run: exit 1
-        
-      - name: Inspect the runner BEFORE checkout
-        run: |
-          echo "who/where am I:"
-          uname -a
-          pwd
-          ls -la          # nearly empty — your code is NOT here yet
-
-
-      - name: Check out the repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with: 
+          node-verstion: '20'
 
-      - name: Inspect AFTER checkout
-        run: |
-          echo "now the repo is here:"
-          ls -la          # your files appeared
+      - name: Install dependencies (reproducible)
+        run: npm ci
+
+      - name: Run tests
+        run: npm test  
 
