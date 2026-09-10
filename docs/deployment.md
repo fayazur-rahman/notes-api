@@ -124,6 +124,9 @@ docker push $REGISTRY/notes-api:<VERSION>
 ```
 Verify: `aws ecr describe-images --repository-name notes-api --region us-east-1 --query 'imageDetails[].imageTags'`.
 
+> NOTE: PART B is now automated by CI (.github/workflows/ci.yml) on every push to main —
+> it builds and pushes an image tagged with the commit SHA (and latest) via OIDC.
+> The manual steps below remain valid for a break-glass build from a laptop.
 
 ---
 
