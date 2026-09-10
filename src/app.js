@@ -13,7 +13,7 @@ export function createApp(notesRepository) {
   app.get('/health', async (_req, res, next) => {
     try {
       await notesRepository.health();
-      res.status(200).json({ status: 'ok' });
+      res.status(500).json({ status: 'ok' });
     } catch (error) {
       next(error);
     }
