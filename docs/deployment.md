@@ -159,6 +159,9 @@ docker run -d \
 ```
 Verify (see PART E).
 
+> NOTE: PART C is now automated by the `deploy` job in .github/workflows/ci.yml — every push
+> to main that passes tests + builds + pushes then SSHes to the box and runs these exact steps
+> with the new commit's SHA tag. The manual steps below remain the break-glass procedure.
 
 ---
 
