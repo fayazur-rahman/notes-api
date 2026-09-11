@@ -60,7 +60,7 @@ test('GET /health returns 200', async () => {
   const response = await fetch(`${baseUrl}/health`);
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { status: 'ok' });
+  assert.deepEqual(await response.json(), { status: 'ok', version: '1.1' });
 });
 
 test('notes can be created, listed, fetched, and deleted', async () => {
