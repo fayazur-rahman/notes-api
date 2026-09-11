@@ -47,7 +47,7 @@ jobs:
           docker build -t $REGISTRY/notes-api:$SHA -t $REGISTRY/notes-api:latest .
           docker push $REGISTRY/notes-api:$SHA
           docker push $REGISTRY/notes-api:latest
-          
+
   deploy: 
     needs: build-test
     if: github.event_name == 'push'
@@ -73,3 +73,4 @@ jobs:
               --restart unless-stopped \
               $REGISTRY/notes-api:${{ github.sha }}
             docker ps -a
+ 
