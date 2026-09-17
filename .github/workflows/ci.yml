@@ -72,5 +72,5 @@ jobs:
               -p 127.0.0.1:3000:3000 \
               --restart unless-stopped \
               $REGISTRY/notes-api:${{ github.sha }}
-            docker ps -a
+            docker ps -a 
  
