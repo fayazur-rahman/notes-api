@@ -64,13 +64,11 @@ jobs:
             export REGISTRY=034866042287.dkr.ecr.us-east-1.amazonaws.com
             aws ecr get-login-password --region us-east-1 \
               | docker login --username AWS --password-stdin $REGISTRY
-            
             docker pull $REGISTRY/notes-api:${{ github.sha }}
-            docker rm -f notes-api || true
-            docker run -d --name notes-api \
-              --env-file /etc/notes-api.env \
-              -p 127.0.0.1:3000:3000 \
-              --restart unless-stopped \
+            docker rm -f notes-api 2>/dev/null || true
+            docker run -d --name notes-api --env-file /etc/notes-api.env \
+              -p 127.0.0.1:3000:3000 --restart unless-stopped \
               $REGISTRY/notes-api:${{ github.sha }}
-            docker ps -a 
+            docker ps --filter name=notes-api
+
  
