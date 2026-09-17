@@ -71,4 +71,4 @@ jobs:
               $REGISTRY/notes-api:${{ github.sha }}
             docker ps --filter name=notes-api
 
- 
+  
