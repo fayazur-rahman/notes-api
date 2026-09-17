@@ -57,7 +57,7 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
+          username: deploy
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
@@ -68,7 +68,7 @@ jobs:
             docker pull $REGISTRY/notes-api:${{ github.sha }}
             docker rm -f notes-api || true
             docker run -d --name notes-api \
-              --env-file /home/ubuntu/.env \
+              --env-file /etc/notes-api.env \
               -p 127.0.0.1:3000:3000 \
               --restart unless-stopped \
               $REGISTRY/notes-api:${{ github.sha }}
