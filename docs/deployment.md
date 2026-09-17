@@ -166,18 +166,37 @@ Verify (see PART E).
 ---
 
 
-# PART D — Rollback
+# PART D — Rollback (break-glass, tested — under 2 min)
 
 
-Broken release? Redeploy the previous pinned tag — same as PART C with the old <VERSION>.
+Recovery does NOT use CI (CI may be the broken thing). SSH in as yourself and redeploy
+the previous SHA (still in ECR, usually still on the box).
+
+
+1. Find the previous SHA:
+   `aws ecr describe-images --repository-name notes-api --region us-east-1 \
+     --query 'reverse(sort_by(imageDetails,&imagePushedAt))[:3].imageTags' --output table`
+2. Roll back:
 ```bash
-docker pull $REGISTRY/notes-api:<PREVIOUS_VERSION>
+ssh -i ~/.ssh/notes-api-key.pem ubuntu@<ELASTIC_IP>
+export REGISTRY=034866042287.dkr.ecr.us-east-1.amazonaws.com
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REGISTRY
+docker pull $REGISTRY/notes-api:<PREVIOUS_SHA>
 docker rm -f notes-api
-docker run -d --name notes-api --env-file /home/ubuntu/.env \
-  -p 127.0.0.1:3000:3000 --restart unless-stopped \
-  $REGISTRY/notes-api:<PREVIOUS_VERSION>
+docker run -d --name notes-api --env-file /etc/notes-api.env \
+  -p 127.0.0.1:3000:3000 --restart unless-stopped $REGISTRY/notes-api:<PREVIOUS_SHA>
 ```
-Then run PART E. (Pinned tags are why rollback is one line — `latest` couldn't do this.)
+3. Verify: `curl -i http://<ELASTIC_IP>/health` → 200 (previous behaviour).
+4. Roll forward when ready: same steps with the newest SHA, or re-run the pipeline.
+
+
+## Deploy credentials (least privilege)
+- CI deploys as the `deploy` user (docker group, NO sudo) with a dedicated key (EC2_SSH_KEY).
+- Runtime secrets: /etc/notes-api.env (root:docker 640) — readable by ubuntu + deploy, no one else.
+- Rotate the deploy key: ssh-keygen new pair → add pub to /home/deploy/.ssh/authorized_keys →
+  update GitHub secret EC2_SSH_KEY → remove old pub key.
+- Break-glass rollback uses YOUR personal key as `ubuntu` (full access), independent of CI.
+
 ---
 
 
