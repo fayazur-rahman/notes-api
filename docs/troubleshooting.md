@@ -139,3 +139,23 @@ psql -h <rds-endpoint> -U notes_app -d notes_db
 - RDS has only a private IP inside the VPC (Public access: No). The EC2 box is in the same
   VPC and can route to it; the laptop is outside the VPC with no route. Not a permission issue.
 
+## Monitoring (W7 D1)
+
+
+### What's watched
+- Machine: CloudWatch EC2 metrics (CPU/network free) + CWAgent (mem_used_percent,
+  disk_used_percent — needs the agent INSIDE the VM; hypervisor can't see them).
+- App up?: CloudWatch Synthetics canary `notes-api-health` hits http://<ip>/health every 1 min
+  from OUTSIDE (tests Nginx + app + RDS, since /health does SELECT 1).
+- Alarm `notes-api-down`: canary SuccessPercent < 100 → SNS topic notes-api-alerts → email.
+  (Email subscription MUST be confirmed or no alerts arrive.)
+
+
+### The reflex: metric alarms THAT something is wrong; logs say WHAT
+- `sudo tail -f /var/log/nginx/access.log` — requests + status codes (field 9).
+- `sudo awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c` — count by status code.
+- `sudo tail /var/log/nginx/error.log` — upstream/Nginx errors (502 lives here).
+
+
+### Test the alarm
+- `docker stop notes-api` → canary fails → email within ~2 min → `docker start notes-api` → OK.
