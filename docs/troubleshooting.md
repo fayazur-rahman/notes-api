@@ -159,3 +159,26 @@ psql -h <rds-endpoint> -U notes_app -d notes_db
 
 ### Test the alarm
 - `docker stop notes-api` → canary fails → email within ~2 min → `docker start notes-api` → OK.
+
+## Incident drill: app crash loop (W7 D2)
+
+
+**Symptoms:** health alarm fired / canary failing; `curl /health` not 200;
+`docker ps` STATUS = `Restarting`.
+**Logs:** `docker logs --tail 30 notes-api` → repeated `password authentication failed
+for user "notes_app"`; `docker inspect --format '{{.RestartCount}}'` climbing.
+**Investigation:** auth error means the app REACHED the DB (not network/SG/Nginx/machine) —
+narrowed to the credential layer.
+**Root cause:** `DB_PASSWORD` in /etc/notes-api.env did not match the RDS master password.
+**Fix (= mitigation here, because it's config not image):** correct DB_PASSWORD, recreate
+the container. (Rollback would NOT help — a config problem, not an image problem.)
+**Prevention:** (1) alarm already detects fast; (2) add a post-deploy smoke test that curls
+/health and rolls back on non-200; (3) runbook: rotating the RDS password MUST update
+/etc/notes-api.env in the same step.
+
+
+### Crash-loop cheatsheet
+- `docker ps` shows `Restarting` = looping (but not why). `docker logs` = why.
+- Cause is exit-non-zero-on-boot + `--restart unless-stopped`. Logs survive because the
+  app writes to stdout/stderr (Docker captures them).
+- Config/credential/data problem → fix the thing. Image problem → roll back to a good SHA.
