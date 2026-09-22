@@ -220,6 +220,19 @@ A 200 from /health proves app + Nginx + RDS are all healthy at once.
 
 ---
 
+### A.x Domain + HTTPS (one-time)
+1. DNS: at the domain's DNS host, add `A  notes  <Elastic IP>  TTL 300` (Cloudflare: DNS only / grey cloud).
+   Verify: `dig +short notes.yourdomain.com` → Elastic IP.
+2. Nginx: set `server_name notes.yourdomain.com;` in /etc/nginx/sites-available/notes-api → `nginx -t` → reload.
+   Verify: `curl -i http://notes.yourdomain.com/health` → 200.
+3. TLS: `sudo apt install -y certbot python3-certbot-nginx`
+   `sudo certbot --nginx -d notes.yourdomain.com -m fayazur8@gmail.com --agree-tos --no-eff-email --redirect`
+   Verify: `curl -i https://notes.yourdomain.com/health` → 200; http → 301; `sudo certbot renew --dry-run` succeeds.
+4. Monitoring: canary URL = https://notes.yourdomain.com/health (every 15 min; alarm period 15 min).
+Notes: cert + key live in /etc/letsencrypt/live/<domain>/ (never in Git). Renewal = certbot.timer.
+Requires SG + ufw 80/443 open (HTTP-01 challenge needs :80).
+
+
 
 # Troubleshooting
 See [troubleshooting.md](troubleshooting.md) — SSH lockout, 502, RDS timeout, ECR auth, IP change.

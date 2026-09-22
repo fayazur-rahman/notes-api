@@ -182,3 +182,35 @@ the container. (Rollback would NOT help — a config problem, not an image probl
 - Cause is exit-non-zero-on-boot + `--restart unless-stopped`. Logs survive because the
   app writes to stdout/stderr (Docker captures them).
 - Config/credential/data problem → fix the thing. Image problem → roll back to a good SHA.
+
+## DNS: name doesn't resolve / resolves wrong
+**Symptoms:** `curl` exit 6 (could not resolve) or exit 28 (timeout to a wrong IP); browser "site can't be reached".
+**Checks:**
+- `dig +short <domain>` — what public DNS says.
+- `dig @<authoritative NS> <domain> +short` — the source of truth (`dig NS <parent> +short` to find it).
+- `getent hosts <domain>` — what the CLIENT OS resolves (includes /etc/hosts). dig ≠ getent → client-side problem.
+**Causes:** record missing/wrong; change not yet propagated (cached until TTL expires); client /etc/hosts or stale local cache.
+**Fix:** correct the A record; wait out the TTL; remove client override.
+**Prevention:** low TTL (300) before planned changes; canary hits the domain, not the IP.
+
+
+## TLS: certificate error (incl. expiry)
+**Symptoms:** browser security warning; `curl` exit 60. Everything INSIDE the box is green (container Up, localhost:3000/health 200, nginx active).
+**Check (one command):**
+`openssl s_client -connect <domain>:443 -servername <domain> </dev/null 2>/dev/null | openssl x509 -noout -subject -dates`
+→ notAfter in the past = expired; subject ≠ requested name = mismatch (e.g. hitting the IP).
+**Fix:** `sudo certbot renew && sudo systemctl reload nginx`
+**Prevention:** certbot.timer (`systemctl list-timers | grep certbot`); `sudo certbot renew --dry-run` after any Nginx/DNS change; canary over HTTPS catches it from outside.
+
+
+## DB unreachable (network / security group)
+**Symptoms:** /health hangs then 504 via Nginx (or 500 if app has a DB timeout); container stays `Up` (no crash loop). Nginx error.log: "upstream timed out ... reading response header".
+**Checks (on the box, then laptop):**
+- `getent hosts <rds-endpoint>` → private IP? (DNS layer)
+- `nc -zv -w 5 <rds-endpoint> 5432` → timed out = dropped by firewall; refused = nothing listening
+- `aws rds describe-db-instances --db-instance-identifier notes-db --query 'DBInstances[0].DBInstanceStatus'` → available?
+- `aws ec2 describe-security-groups --group-names notes-rds-sg --query 'SecurityGroups[0].IpPermissions'` → 5432 from EC2 SG present?
+**Fix:** re-add inbound rule on notes-rds-sg: PostgreSQL 5432, Source = EC2 security group. No container restart needed — pool reconnects.
+**Do NOT** restart the container mid-outage: boot runs DB init → it would fail at startup and crash-loop.
+**Prevention:** reviewed SG changes only; HTTPS canary alarm; ask devs for an explicit DB connection timeout (fail fast, clear log).
+**Drilled:** 2026-09-21 — recovered in <your time>.
